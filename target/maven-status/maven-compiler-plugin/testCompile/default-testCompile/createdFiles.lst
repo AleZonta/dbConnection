@@ -1,0 +1,6 @@
+Connections/DatabaseEntityTest.class
+dbConnection/AppTest.class
+dbConnection/dbTest.class
+Connections/DatabaseCoordNodeTest.class
+Connections/DatabaseDistanceTest.class
+Config/ReadConfigTest.class
