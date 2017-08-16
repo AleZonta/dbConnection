@@ -2,3 +2,18 @@
 *.xml
 
 *.db
+
+*.class
+
+*.class
+
+*.class
+
+*.jar
+
+*.jar
+
+*.lst
+
+.idea/
+target/

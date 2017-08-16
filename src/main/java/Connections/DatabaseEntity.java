@@ -2,10 +2,13 @@ package Connections;
 
 import org.sqlite.javax.SQLiteConnectionPoolDataSource;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +34,45 @@ public class DatabaseEntity {
 
 
     /**
-     * Create the database if it does not exist
+     * check if db still exist
      */
-    public DatabaseEntity(){
+    public DatabaseEntity() throws FileNotFoundException {
+        File f = new File("entity.db");
+        if(!f.exists()) {
+            throw new FileNotFoundException("Database file is not available");
+        }
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        this.dataSource = new SQLiteConnectionPoolDataSource();
+        this.dataSource.setUrl("jdbc:sqlite:entity.db");
+    }
+
+    /**
+     * Constructor one parameter
+     * If true creates the db
+     * @param var boolean variable
+     */
+    public DatabaseEntity(Boolean var){
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        this.dataSource = new SQLiteConnectionPoolDataSource();
+        this.dataSource.setUrl("jdbc:sqlite:entity.db");
+        if(var){
+            this.createDb();
+        }
+    }
+
+
+    /**
+     * Create the database
+     */
+    private void createDb(){
         Connection c = null;
         Statement stmt = null;
 
@@ -133,6 +172,53 @@ public class DatabaseEntity {
         }
     }
 
+
+
+
+    private Connection c;
+    private Statement stmt;
+
+    /**
+     * Set up the connection
+     * @throws SQLException if problems appear
+     */
+    public void setConnection() throws SQLException {
+        this.c = this.dataSource.getPooledConnection().getConnection();
+        this.c.setAutoCommit(false);
+    }
+
+    /**
+     * Read the data from the db using latitude and logitude
+     * It returns a string containing the key and the value of the tag corresponding to that place
+     * @param lat latitude variable
+     * @param lon longitude variable
+     * @return string value (two result are separated by a /// as escape). If not present the two results will be NULL
+     */
+    public String readDataBis(Double lat, Double lon) throws SQLException {
+        this.stmt = this.c.createStatement();
+        ResultSet rs = this.stmt.executeQuery(String.format("SELECT * FROM ENTITY WHERE LATITUDE='%s' AND LONGITUDE='%s';", lat, lon));
+
+        String key = null;
+        String value = null;
+        while ( rs.next() ) {
+            key = rs.getString("KEYV");
+            value = rs.getString("VALUE");
+        }
+        rs.close();
+
+        return String.format("%s///%s", key, value);
+    }
+
+    /**
+     * Close the connection
+     * @throws SQLException  if problems appear
+     */
+    public void closeConnection() throws SQLException {
+        this.c.close();
+    }
+
+
+
     /**
      * Obtain the list of the values present in the database
      * @return list od distinct values
@@ -164,4 +250,76 @@ public class DatabaseEntity {
             return null;
         }
     }
+
+
+    /**
+     * Obtain all the coordinates in the database
+     * @return list of coordinates
+     */
+    public List<Point> obtainCoordinates(){
+        Connection c = null;
+        Statement stmt = null;
+        try {
+            c = this.dataSource.getPooledConnection().getConnection();
+
+            c.setAutoCommit(false);
+
+            stmt = c.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT LATITUDE, LONGITUDE FROM 'ENTITY';");
+
+            List<Point> values = new ArrayList<>();
+            while ( rs.next() ) {
+                Double lat = rs.getDouble("LATITUDE");
+                Double lon = rs.getDouble("LONGITUDE");
+                values.add(new Point(lat,lon));
+            }
+
+            rs.close();
+            stmt.close();
+            c.close();
+
+            return values;
+
+        } catch ( Exception e ) {
+            logger.log(Level.INFO, e.getClass().getName() + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+
+    /**
+     * Helper class
+     */
+    public class Point{
+        Double lat;
+        Double lon;
+
+        /**
+         * Constructor two parameters
+         * @param lat double latitude
+         * @param lon double longitude
+         */
+        public Point(Double lat, Double lon){
+            this.lat = lat;
+            this.lon = lon;
+        }
+
+        /**
+         * Getter for latitude
+         * @return double latitude
+         */
+        public Double getLat() {
+            return lat;
+        }
+
+        /**
+         * Getter for longitude
+         * @return double longitude
+         */
+        public Double getLon() {
+            return lon;
+        }
+
+    }
+
 }
